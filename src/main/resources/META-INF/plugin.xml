@@ -15,4 +15,20 @@
         <listener class="com.github.cherrydevbomb.collabo.listeners.MyProjectManagerListener"
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </applicationListeners>
+
+    <actions>
+        <group id="com.github.cherrydevbomb.collabo.menu.actions.main"
+               text="Collabo"
+               popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="com.github.cherrydevbomb.collabo.menu.actions.HostNewSessionDialogAction"
+                    class="com.github.cherrydevbomb.collabo.menu.actions.HostNewSessionDialogAction"
+                    text="Host new session"
+                    description="Start a new Collabo session"/>
+            <action id="com.github.cherrydevbomb.collabo.menu.actions.JoinSessionDialogAction"
+                    class="com.github.cherrydevbomb.collabo.menu.actions.JoinSessionDialogAction"
+                    text="Join Session"
+                    description="Use an ID to join an existing Collabo session"/>
+        </group>
+    </actions>
 </idea-plugin>
