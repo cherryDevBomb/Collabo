@@ -1,5 +1,6 @@
 package com.github.cherrydevbomb.collabo.menu.actions;
 
+import com.github.cherrydevbomb.collabo.communication.service.PeerCommunicationService;
 import com.github.cherrydevbomb.collabo.menu.validator.SessionIdValidator;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -9,9 +10,17 @@ import org.jetbrains.annotations.NotNull;
 
 public class JoinSessionDialogAction extends AnAction {
 
+    private final PeerCommunicationService peerCommunicationService;
+
+    public JoinSessionDialogAction() {
+        super();
+        peerCommunicationService = PeerCommunicationService.getInstance();
+    }
+
     @Override
     public void update(@NotNull AnActionEvent event) {
         // TODO disable when hosting a session
+        event.getPresentation().setEnabled(!peerCommunicationService.isActiveSession());
     }
 
     @Override

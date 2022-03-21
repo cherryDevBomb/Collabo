@@ -1,5 +1,6 @@
 package com.github.cherrydevbomb.collabo.menu.actions;
 
+import com.github.cherrydevbomb.collabo.communication.service.HostCommunicationService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -14,12 +15,19 @@ import java.util.UUID;
 
 public class HostNewSessionDialogAction extends AnAction {
 
+    private final HostCommunicationService hostCommunicationService;
+
+    public HostNewSessionDialogAction() {
+        super();
+        this.hostCommunicationService = HostCommunicationService.getInstance();
+    }
+
     @Override
     public void update(@NotNull AnActionEvent event) {
         // enable only if a project is open
         // TODO disable when editing in another session
         Project currentProject = event.getProject();
-        event.getPresentation().setEnabledAndVisible(currentProject != null);
+        event.getPresentation().setEnabled(currentProject != null && !hostCommunicationService.isHostingSession());
     }
 
     @Override
@@ -37,6 +45,8 @@ public class HostNewSessionDialogAction extends AnAction {
         // Create sessionId
         String sessionId = UUID.randomUUID().toString();
 
+        sessionId = "X"; //TODO remove after debug
+
         // Create dialog text
         message.append("\n\n")
                 .append(sessionId)
@@ -47,10 +57,17 @@ public class HostNewSessionDialogAction extends AnAction {
         int selected = Messages.showOkCancelDialog(currentProject, message.toString(), title, "Start", "Cancel", Messages.getInformationIcon());
 
         if (selected == Messages.OK) {
+            // copy sessionId to clipboard
             System.out.println("Pressed copy");
             Toolkit.getDefaultToolkit()
                     .getSystemClipboard()
                     .setContents(new StringSelection(sessionId), null);
+
+            try {
+                hostCommunicationService.startSession(sessionId);
+            } catch (Exception e) {
+                System.out.println("Error starting new session");
+            }
             System.out.println("Session started");
         } else if (selected == Messages.CANCEL) {
             System.out.println("Cancel clicked");
