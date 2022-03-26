@@ -27,7 +27,8 @@ repositories {
 dependencies {
     implementation("org.springframework:spring-core:5.3.17")
     implementation("org.springframework.boot:spring-boot-starter-data-redis:2.6.4")
-    implementation("org.projectlombok:lombok:1.18.22")
+    compileOnly("org.projectlombok:lombok:1.18.22")
+    annotationProcessor("org.projectlombok:lombok:1.18.22")
     implementation("io.lettuce:lettuce-core:6.1.8.RELEASE")
 }
 
