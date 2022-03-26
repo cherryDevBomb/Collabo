@@ -29,6 +29,6 @@ public class JoinSessionDialogAction extends AnAction {
         Project currentProject = event.getProject();
         String message = "Enter the ID you received to join a Collabo session";
         String title = event.getPresentation().getDescription();
-        Messages.showInputDialog(currentProject, message, title, Messages.getInformationIcon(), "", new SessionIdValidator());
+        Messages.showInputDialog(currentProject, message, title, Messages.getInformationIcon(), "", new SessionIdValidator(currentProject));
     }
 }

@@ -30,6 +30,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.22")
     annotationProcessor("org.projectlombok:lombok:1.18.22")
     implementation("io.lettuce:lettuce-core:6.1.8.RELEASE")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.13.2")
 }
 
 // Configure Gradle IntelliJ Plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin

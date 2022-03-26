@@ -3,11 +3,10 @@ package com.github.cherrydevbomb.collabo.communication.service;
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.PeerInitStateTransferSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelNameBuilder;
+import com.intellij.openapi.project.Project;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
-import org.springframework.stereotype.Service;
 
-@Service
 public class PeerCommunicationService {
 
     private static PeerCommunicationService peerCommunicationService;
@@ -33,7 +32,7 @@ public class PeerCommunicationService {
         return currentSessionId != null;
     }
 
-    public void joinSession(String sessionId) {
+    public void joinSession(String sessionId, Project project) {
         if (isActiveSession()) {
             return;
         }
@@ -42,7 +41,7 @@ public class PeerCommunicationService {
         String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(sessionId);
         String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(sessionId);
 
-        redisSubConnection.addListener(new PeerInitStateTransferSubscriber());
+        redisSubConnection.addListener(new PeerInitStateTransferSubscriber(project));
         RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
         asyncSub.subscribe(initStateTransferChannel);
 

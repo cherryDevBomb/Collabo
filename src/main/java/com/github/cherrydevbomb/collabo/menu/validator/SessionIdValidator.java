@@ -1,16 +1,19 @@
 package com.github.cherrydevbomb.collabo.menu.validator;
 
 import com.github.cherrydevbomb.collabo.communication.service.PeerCommunicationService;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.util.NlsSafe;
 
 public class SessionIdValidator implements InputValidator {
 
     private PeerCommunicationService peerCommunicationService;
+    private Project project;
 
-    public SessionIdValidator() {
+    public SessionIdValidator(Project project) {
         super();
-        peerCommunicationService = PeerCommunicationService.getInstance();
+        this.peerCommunicationService = PeerCommunicationService.getInstance();
+        this.project = project;
     }
 
     @Override
@@ -25,7 +28,7 @@ public class SessionIdValidator implements InputValidator {
         // TODO trigger connecting to session
         System.out.println(inputString);
 
-        peerCommunicationService.joinSession(inputString);
+        peerCommunicationService.joinSession(inputString, project);
 
         return true;
     }

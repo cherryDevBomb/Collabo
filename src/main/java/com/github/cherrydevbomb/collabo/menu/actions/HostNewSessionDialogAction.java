@@ -4,8 +4,13 @@ import com.github.cherrydevbomb.collabo.communication.service.HostCommunicationS
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.Navigatable;
 import org.jetbrains.annotations.NotNull;
 
@@ -64,7 +69,9 @@ public class HostNewSessionDialogAction extends AnAction {
                     .setContents(new StringSelection(sessionId), null);
 
             try {
-                hostCommunicationService.startSession(sessionId);
+//                Document document = event.getData(CommonDataKeys.EDITOR).getDocument(); //TODO add null check or enable "start session" only if a document is open
+                VirtualFile virtualFile = event.getData(PlatformDataKeys.VIRTUAL_FILE);
+                hostCommunicationService.startSession(sessionId, virtualFile);
             } catch (Exception e) {
                 System.out.println("Error starting new session");
             }
