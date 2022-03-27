@@ -9,12 +9,17 @@ import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.FileTypeRegistry;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.PsiDocumentManager;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDirectory;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiFileFactory;
+import com.intellij.psi.impl.file.PsiDirectoryFactory;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,11 +48,19 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
         }
 
         FileType fileType = ReadAction.compute(() -> FileTypeRegistry.getInstance().getFileTypeByFileName(initialState.getFileName()));
+
         AtomicReference<PsiFile> psiFile = new AtomicReference<>();
         ApplicationManager.getApplication().invokeAndWait(() -> psiFile.set(WriteAction.compute(() -> PsiFileFactory.getInstance(project).createFileFromText(initialState.getFileName(), fileType, initialState.getText()))));
-        Document document = ReadAction.compute(() -> PsiDocumentManager.getInstance(project).getDocument(psiFile.get()));
-        // TODO document is null
-        ApplicationManager.getApplication().invokeLater(() -> WriteAction.compute(() -> EditorFactory.getInstance().createEditor(document, project, fileType, false)));
+
+        ApplicationManager.getApplication().invokeLater(() -> {
+            PsiDirectory psiDirectory = WriteAction.compute(() -> PsiDirectoryFactory.getInstance(project).createDirectory(project.getProjectFile().getParent()).createSubdirectory("collabo"));
+            PsiElement psiFileAdded = WriteAction.compute(() -> psiDirectory.add(psiFile.get()));
+            VirtualFile virtualFile = WriteAction.compute(() -> psiDirectory.findFile(initialState.getFileName()).getVirtualFile());
+            Document document = WriteAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
+            Editor editor = WriteAction.compute(() -> EditorFactory.getInstance().createEditor(document, project, fileType, false)); // TODO check if needed
+            ReadAction.compute(() -> FileEditorManager.getInstance(project).openFile(virtualFile, true));
+            FileDocumentManager.getInstance().saveAllDocuments();
+        });
     }
 
     @Override
