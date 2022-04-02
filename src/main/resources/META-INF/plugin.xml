@@ -29,6 +29,10 @@
                     class="com.github.cherrydevbomb.collabo.menu.actions.JoinSessionDialogAction"
                     text="Join Session"
                     description="Use an ID to join an existing Collabo session"/>
+            <action id="com.github.cherrydevbomb.collabo.menu.actions.StopSessionDialogAction"
+                    class="com.github.cherrydevbomb.collabo.menu.actions.StopSessionDialogAction"
+                    text="Stop Session"
+                    description="Stop hosting or leave current Collabo session"/>
         </group>
     </actions>
 </idea-plugin>

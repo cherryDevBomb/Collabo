@@ -4,6 +4,7 @@ import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.PeerInitStateTransferSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelNameBuilder;
 import com.intellij.openapi.project.Project;
+import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 
@@ -13,8 +14,10 @@ public class PeerCommunicationService {
 
     private String currentSessionId;
 
-    private StatefulRedisPubSubConnection<String, String> redisPubConnection;
-    private StatefulRedisPubSubConnection<String, String> redisSubConnection;
+    private final StatefulRedisPubSubConnection<String, String> redisPubConnection;
+    private final StatefulRedisPubSubConnection<String, String> redisSubConnection;
+
+    RedisPubSubListener<String, String> peerInitStateTransferSubscriber;
 
     public static PeerCommunicationService getInstance() {
         if (peerCommunicationService == null) {
@@ -28,12 +31,12 @@ public class PeerCommunicationService {
         redisSubConnection = RedisConfig.getRedisSubConnection();
     }
 
-    public boolean isActiveSession() {
+    public boolean isActivePeerSession() {
         return currentSessionId != null;
     }
 
     public void joinSession(String sessionId, Project project) {
-        if (isActiveSession()) {
+        if (isActivePeerSession()) {
             return;
         }
 
@@ -41,7 +44,8 @@ public class PeerCommunicationService {
         String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(sessionId);
         String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(sessionId);
 
-        redisSubConnection.addListener(new PeerInitStateTransferSubscriber(project));
+        peerInitStateTransferSubscriber = new PeerInitStateTransferSubscriber(project);
+        redisSubConnection.addListener(peerInitStateTransferSubscriber);
         RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
         asyncSub.subscribe(initStateTransferChannel);
 
@@ -50,8 +54,15 @@ public class PeerCommunicationService {
         asyncPub.publish(initStateRequestChannel, "Peer requests to join session " + sessionId);
     }
 
-    //TODO implement leave session
     public void leaveSession() {
+        String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(currentSessionId);
+        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
+        async.unsubscribe(initStateTransferChannel);
+        redisSubConnection.removeListener(peerInitStateTransferSubscriber);
 
+        peerInitStateTransferSubscriber = null;
+        currentSessionId = null;
+
+        // TODO maybe close editor with shared file?
     }
 }

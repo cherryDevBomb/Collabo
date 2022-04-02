@@ -3,8 +3,8 @@ package com.github.cherrydevbomb.collabo.communication.service;
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.HostInitStateRequestSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelNameBuilder;
-import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.vfs.VirtualFile;
+import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 
@@ -16,6 +16,8 @@ public class HostCommunicationService {
 
     private StatefulRedisPubSubConnection<String, String> redisPubConnection;
     private StatefulRedisPubSubConnection<String, String> redisSubConnection;
+
+    RedisPubSubListener<String, String> hostInitStateRequestSubscriber;
 
     public static HostCommunicationService getInstance() {
         if (hostCommunicationService == null) {
@@ -38,17 +40,25 @@ public class HostCommunicationService {
             return; // TODO throw exception
         }
 
-        this.currentSessionId = sessionId;
+        currentSessionId = sessionId;
         String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(sessionId);
         String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(sessionId);
 
-        redisSubConnection.addListener(new HostInitStateRequestSubscriber(initStateTransferChannel, virtualFile));
+        hostInitStateRequestSubscriber = new HostInitStateRequestSubscriber(initStateTransferChannel, virtualFile);
+        redisSubConnection.addListener(hostInitStateRequestSubscriber);
         RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
         async.subscribe(initStateRequestChannel);
     }
 
-    //TODO implement destroy session
-    public void destroySession() {
+    public void stopSession() {
+        String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(currentSessionId);
+        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
+        async.unsubscribe(initStateRequestChannel);
+        redisSubConnection.removeListener(hostInitStateRequestSubscriber);
 
+        hostInitStateRequestSubscriber = null;
+        currentSessionId = null;
+
+        // TODO send message to peers to notify that session was stopped
     }
 }

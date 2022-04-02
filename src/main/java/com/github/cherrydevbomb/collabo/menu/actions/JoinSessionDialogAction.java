@@ -20,7 +20,7 @@ public class JoinSessionDialogAction extends AnAction {
     @Override
     public void update(@NotNull AnActionEvent event) {
         // TODO disable when hosting a session
-        event.getPresentation().setEnabled(!peerCommunicationService.isActiveSession());
+        event.getPresentation().setEnabled(!peerCommunicationService.isActivePeerSession());
     }
 
     @Override
