@@ -3,6 +3,7 @@ package com.github.cherrydevbomb.collabo.communication.service;
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.PeerInitStateTransferSubscriber;
 import com.github.cherrydevbomb.collabo.communication.subscriber.RemoteDocumentChangeSubscriber;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
@@ -48,8 +49,8 @@ public class PeerCommunicationService {
         }
 
         this.currentSessionId = sessionId;
-        String initStateRequestChannel = ChannelUtil.getInitStateRequestChannel(sessionId);
-        String initStateTransferChannel = ChannelUtil.getInitStateTransferChannel(sessionId);
+        String initStateRequestChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_REQUEST_CHANNEL);
+        String initStateTransferChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
 
         peerInitStateTransferSubscriber = new PeerInitStateTransferSubscriber(this, project);
         redisSubConnection.addListener(peerInitStateTransferSubscriber);
@@ -63,12 +64,12 @@ public class PeerCommunicationService {
 
     public void subscribeToChanges(Editor editor) {
         // unsubscribe from initial state transfer
-        String initStateTransferChannel = ChannelUtil.getInitStateTransferChannel(currentSessionId);
+        String initStateTransferChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
         unsubscribe(initStateTransferChannel, peerInitStateTransferSubscriber);
         peerInitStateTransferSubscriber = null;
 
         // subscribe to future document changes
-        String documentChangeChannel = ChannelUtil.getDocumentChangeChannel(currentSessionId);
+        String documentChangeChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DOCUMENT_CHANGE_CHANNEL);
         remoteDocumentChangeSubscriber = new RemoteDocumentChangeSubscriber(editor);
         redisSubConnection.addListener(remoteDocumentChangeSubscriber);
         RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
@@ -76,7 +77,7 @@ public class PeerCommunicationService {
     }
 
     public void leaveSession() {
-        String documentChangeChannel = ChannelUtil.getDocumentChangeChannel(currentSessionId);
+        String documentChangeChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DOCUMENT_CHANGE_CHANNEL);
         unsubscribe(documentChangeChannel, remoteDocumentChangeSubscriber);
         remoteDocumentChangeSubscriber = null;
 

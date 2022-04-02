@@ -3,6 +3,7 @@ package com.github.cherrydevbomb.collabo.communication.subscriber;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.cherrydevbomb.collabo.communication.model.DocumentChange;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
@@ -23,7 +24,7 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
 
     @Override
     public void message(String channel, String message) {
-        if (!channel.contains(ChannelUtil.DOCUMENT_CHANGE_CHANNEL)) {
+        if (!ChannelUtil.isOfType(channel, ChannelType.DOCUMENT_CHANGE_CHANNEL)) {
             return;
         }
 

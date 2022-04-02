@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.cherrydevbomb.collabo.communication.model.InitialState;
 import com.github.cherrydevbomb.collabo.communication.service.PeerCommunicationService;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.github.cherrydevbomb.collabo.editor.LocalDocumentChangeListener;
 import com.intellij.openapi.application.ApplicationManager;
@@ -42,7 +43,7 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
 
     @Override
     public void message(String channel, String message) {
-        if (!channel.contains(ChannelUtil.INIT_STATE_TRANSFER_CHANNEL)) {
+        if (!ChannelUtil.isOfType(channel, ChannelType.INIT_STATE_TRANSFER_CHANNEL)) {
             return;
         }
 
@@ -88,7 +89,7 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             // add listener for changes in the document
             Editor editor = ReadAction.compute(() -> FileEditorManager.getInstance(project).getSelectedTextEditor());
             Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
-            String documentChangeChannel = ChannelUtil.getDocumentChangeChannel(peerCommunicationService.getCurrentSessionId());
+            String documentChangeChannel = ChannelUtil.getChannel(peerCommunicationService.getCurrentSessionId(), ChannelType.DOCUMENT_CHANGE_CHANNEL);
             document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel));
 
             peerCommunicationService.subscribeToChanges(editor);

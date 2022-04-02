@@ -2,6 +2,7 @@ package com.github.cherrydevbomb.collabo.communication.subscriber;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.model.InitialState;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
@@ -29,7 +30,7 @@ public class HostInitStateRequestSubscriber implements RedisPubSubListener<Strin
 
     @Override
     public void message(String channel, String message) {
-        if (!channel.contains(ChannelUtil.INIT_STATE_REQUEST_CHANNEL)) {
+        if (!ChannelUtil.isOfType(channel, ChannelType.INIT_STATE_REQUEST_CHANNEL)) {
             return;
         }
 
