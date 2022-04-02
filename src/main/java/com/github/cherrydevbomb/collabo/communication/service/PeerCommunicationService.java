@@ -2,7 +2,9 @@ package com.github.cherrydevbomb.collabo.communication.service;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.PeerInitStateTransferSubscriber;
-import com.github.cherrydevbomb.collabo.communication.util.ChannelNameBuilder;
+import com.github.cherrydevbomb.collabo.communication.subscriber.RemoteDocumentChangeSubscriber;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -18,6 +20,7 @@ public class PeerCommunicationService {
     private final StatefulRedisPubSubConnection<String, String> redisSubConnection;
 
     RedisPubSubListener<String, String> peerInitStateTransferSubscriber;
+    RedisPubSubListener<String, String> remoteDocumentChangeSubscriber;
 
     public static PeerCommunicationService getInstance() {
         if (peerCommunicationService == null) {
@@ -31,6 +34,10 @@ public class PeerCommunicationService {
         redisSubConnection = RedisConfig.getRedisSubConnection();
     }
 
+    public String getCurrentSessionId() {
+        return currentSessionId;
+    }
+
     public boolean isActivePeerSession() {
         return currentSessionId != null;
     }
@@ -41,10 +48,10 @@ public class PeerCommunicationService {
         }
 
         this.currentSessionId = sessionId;
-        String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(sessionId);
-        String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(sessionId);
+        String initStateRequestChannel = ChannelUtil.getInitStateRequestChannel(sessionId);
+        String initStateTransferChannel = ChannelUtil.getInitStateTransferChannel(sessionId);
 
-        peerInitStateTransferSubscriber = new PeerInitStateTransferSubscriber(project);
+        peerInitStateTransferSubscriber = new PeerInitStateTransferSubscriber(this, project);
         redisSubConnection.addListener(peerInitStateTransferSubscriber);
         RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
         asyncSub.subscribe(initStateTransferChannel);
@@ -54,15 +61,33 @@ public class PeerCommunicationService {
         asyncPub.publish(initStateRequestChannel, "Peer requests to join session " + sessionId);
     }
 
-    public void leaveSession() {
-        String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(currentSessionId);
-        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
-        async.unsubscribe(initStateTransferChannel);
-        redisSubConnection.removeListener(peerInitStateTransferSubscriber);
-
+    public void subscribeToChanges(Editor editor) {
+        // unsubscribe from initial state transfer
+        String initStateTransferChannel = ChannelUtil.getInitStateTransferChannel(currentSessionId);
+        unsubscribe(initStateTransferChannel, peerInitStateTransferSubscriber);
         peerInitStateTransferSubscriber = null;
+
+        // subscribe to future document changes
+        String documentChangeChannel = ChannelUtil.getDocumentChangeChannel(currentSessionId);
+        remoteDocumentChangeSubscriber = new RemoteDocumentChangeSubscriber(editor);
+        redisSubConnection.addListener(remoteDocumentChangeSubscriber);
+        RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
+        asyncSub.subscribe(documentChangeChannel);
+    }
+
+    public void leaveSession() {
+        String documentChangeChannel = ChannelUtil.getDocumentChangeChannel(currentSessionId);
+        unsubscribe(documentChangeChannel, remoteDocumentChangeSubscriber);
+        remoteDocumentChangeSubscriber = null;
+
         currentSessionId = null;
 
         // TODO maybe close editor with shared file?
+    }
+
+    private void unsubscribe(String channel, RedisPubSubListener<String, String> subscriber) {
+        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
+        async.unsubscribe(channel);
+        redisSubConnection.removeListener(subscriber);
     }
 }

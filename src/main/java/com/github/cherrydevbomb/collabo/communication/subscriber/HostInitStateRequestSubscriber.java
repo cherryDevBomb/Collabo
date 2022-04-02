@@ -2,6 +2,7 @@ package com.github.cherrydevbomb.collabo.communication.subscriber;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.model.InitialState;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -28,6 +29,10 @@ public class HostInitStateRequestSubscriber implements RedisPubSubListener<Strin
 
     @Override
     public void message(String channel, String message) {
+        if (!channel.contains(ChannelUtil.INIT_STATE_REQUEST_CHANNEL)) {
+            return;
+        }
+
         System.out.println("Host received: " + message);
 
         Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
@@ -38,7 +43,7 @@ public class HostInitStateRequestSubscriber implements RedisPubSubListener<Strin
 
         RedisPubSubAsyncCommands<String, String> async = redisConnection.async();
         try {
-            long subscriberCount = async.publish(initStateTransferChannel, initialState.toString()).get();
+            long subscriberCount = async.publish(initStateTransferChannel, initialState.serialize()).get();
         } catch (InterruptedException | ExecutionException e) {
             log.error("Could not publish to channel {}", initStateTransferChannel);
         }

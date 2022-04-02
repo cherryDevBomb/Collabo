@@ -2,7 +2,7 @@ package com.github.cherrydevbomb.collabo.communication.service;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.HostInitStateRequestSubscriber;
-import com.github.cherrydevbomb.collabo.communication.util.ChannelNameBuilder;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -41,8 +41,8 @@ public class HostCommunicationService {
         }
 
         currentSessionId = sessionId;
-        String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(sessionId);
-        String initStateTransferChannel = ChannelNameBuilder.getInitStateTransferChannel(sessionId);
+        String initStateRequestChannel = ChannelUtil.getInitStateRequestChannel(sessionId);
+        String initStateTransferChannel = ChannelUtil.getInitStateTransferChannel(sessionId);
 
         hostInitStateRequestSubscriber = new HostInitStateRequestSubscriber(initStateTransferChannel, virtualFile);
         redisSubConnection.addListener(hostInitStateRequestSubscriber);
@@ -51,7 +51,7 @@ public class HostCommunicationService {
     }
 
     public void stopSession() {
-        String initStateRequestChannel = ChannelNameBuilder.getInitStateRequestChannel(currentSessionId);
+        String initStateRequestChannel = ChannelUtil.getInitStateRequestChannel(currentSessionId);
         RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
         async.unsubscribe(initStateRequestChannel);
         redisSubConnection.removeListener(hostInitStateRequestSubscriber);

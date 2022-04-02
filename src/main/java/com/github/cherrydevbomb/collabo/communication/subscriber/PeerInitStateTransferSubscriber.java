@@ -3,9 +3,14 @@ package com.github.cherrydevbomb.collabo.communication.subscriber;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.cherrydevbomb.collabo.communication.model.InitialState;
+import com.github.cherrydevbomb.collabo.communication.service.PeerCommunicationService;
+import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
+import com.github.cherrydevbomb.collabo.editor.LocalDocumentChangeListener;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileTypes.FileType;
@@ -27,14 +32,20 @@ import java.util.stream.Stream;
 public class PeerInitStateTransferSubscriber implements RedisPubSubListener<String, String> {
 
     private final ObjectMapper mapper = new ObjectMapper();
+    private final PeerCommunicationService peerCommunicationService;
     private final Project project;
 
-    public PeerInitStateTransferSubscriber(Project project) {
+    public PeerInitStateTransferSubscriber(PeerCommunicationService peerCommunicationService, Project project) {
+        this.peerCommunicationService = peerCommunicationService;
         this.project = project;
     }
 
     @Override
     public void message(String channel, String message) {
+        if (!channel.contains(ChannelUtil.INIT_STATE_TRANSFER_CHANNEL)) {
+            return;
+        }
+
         System.out.println("Peer received initial state: " + message);
 
         InitialState initialState;
@@ -45,6 +56,7 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             return; // TODO throw exception
         }
 
+        // TODO move to a helper class in editor package
         FileType fileType = ReadAction.compute(() -> FileTypeRegistry.getInstance().getFileTypeByFileName(initialState.getFileName()));
 
         AtomicReference<PsiFile> psiFile = new AtomicReference<>();
@@ -52,7 +64,7 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
 
         ApplicationManager.getApplication().invokeLater(() -> {
             PsiDirectory projectRoot = ReadAction.compute(() -> PsiDirectoryFactory.getInstance(project).createDirectory(project.getProjectFile().getParent()));
-            PsiDirectory existingCollaboDirectory = WriteAction.compute(() -> projectRoot.findSubdirectory("collabo"));
+            PsiDirectory existingCollaboDirectory = ReadAction.compute(() -> projectRoot.findSubdirectory("collabo"));
             PsiDirectory collaboDirectory = (existingCollaboDirectory != null) ? existingCollaboDirectory : WriteAction.compute(() -> projectRoot.createSubdirectory("collabo"));
 
             // delete existing files left over from previous sessions
@@ -72,6 +84,14 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             VirtualFile virtualFile = ReadAction.compute(() -> collaboDirectory.findFile(initialState.getFileName()).getVirtualFile());
             ReadAction.compute(() -> FileEditorManager.getInstance(project).openFile(virtualFile, true));
             FileDocumentManager.getInstance().saveAllDocuments();
+
+            // add listener for changes in the document
+            Editor editor = ReadAction.compute(() -> FileEditorManager.getInstance(project).getSelectedTextEditor());
+            Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
+            String documentChangeChannel = ChannelUtil.getDocumentChangeChannel(peerCommunicationService.getCurrentSessionId());
+            document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel));
+
+            peerCommunicationService.subscribeToChanges(editor);
         });
     }
 

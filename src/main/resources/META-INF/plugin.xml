@@ -23,7 +23,7 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <action id="com.github.cherrydevbomb.collabo.menu.actions.HostNewSessionDialogAction"
                     class="com.github.cherrydevbomb.collabo.menu.actions.HostNewSessionDialogAction"
-                    text="Host new session"
+                    text="Host New Session"
                     description="Start a new Collabo session"/>
             <action id="com.github.cherrydevbomb.collabo.menu.actions.JoinSessionDialogAction"
                     class="com.github.cherrydevbomb.collabo.menu.actions.JoinSessionDialogAction"

@@ -14,10 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 @AllArgsConstructor
 @Builder
 @Slf4j
-public class InitialState {
+public class DocumentChange {
 
+    private int offset;
     private String text;
-    private String fileName;
 
     public String serialize() {
         ObjectMapper mapper = new ObjectMapper();
@@ -25,7 +25,7 @@ public class InitialState {
         try {
             return mapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            log.error("Error converting InitialState object to JSON", e);
+            log.error("Error converting DocumentChange object to JSON", e);
         }
         return "";
     }
