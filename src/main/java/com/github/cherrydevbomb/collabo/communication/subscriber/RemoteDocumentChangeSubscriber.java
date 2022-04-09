@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.cherrydevbomb.collabo.communication.model.DocumentChange;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
+import com.github.cherrydevbomb.collabo.editor.EditorUtil;
+import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -17,9 +19,12 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final Editor editor;
+    private final DocumentManager documentManager;
+
 
     public RemoteDocumentChangeSubscriber(Editor editor) {
         this.editor = editor;
+        this.documentManager = DocumentManager.getInstance();
     }
 
     @Override
@@ -36,10 +41,12 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
             return; // TODO throw exception
         }
 
-        Document document = editor.getDocument();
-        Project project = editor.getProject();
-        Runnable runnable = () -> document.insertString(documentChange.getOffset(), documentChange.getText());
-        WriteCommandAction.runWriteCommandAction(project, runnable);
+        switch (documentChange.getChangeType()) {
+            case INSERT:
+                documentManager.insertElement(documentChange.getElement());
+        }
+
+        EditorUtil.insertText(editor, documentManager.getElementOffset(documentChange.getElement()), documentChange.getElement().getValue());
     }
 
     @Override

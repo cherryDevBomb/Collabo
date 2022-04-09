@@ -4,6 +4,7 @@ import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.HostInitStateRequestSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
+import com.github.cherrydevbomb.collabo.communication.util.UserIdGenerator;
 import com.intellij.openapi.vfs.VirtualFile;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -14,6 +15,7 @@ public class HostCommunicationService {
     private static HostCommunicationService hostCommunicationService;
 
     private String currentSessionId;
+    private String userId;
 
     private StatefulRedisPubSubConnection<String, String> redisPubConnection;
     private StatefulRedisPubSubConnection<String, String> redisSubConnection;
@@ -41,6 +43,7 @@ public class HostCommunicationService {
             return; // TODO throw exception
         }
 
+        userId = UserIdGenerator.generate();
         currentSessionId = sessionId;
         String initStateRequestChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_REQUEST_CHANNEL);
         String initStateTransferChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
@@ -59,6 +62,7 @@ public class HostCommunicationService {
 
         hostInitStateRequestSubscriber = null;
         currentSessionId = null;
+        userId = null;
 
         // TODO send message to peers to notify that session was stopped
     }

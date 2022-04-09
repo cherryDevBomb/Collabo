@@ -90,7 +90,7 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             Editor editor = ReadAction.compute(() -> FileEditorManager.getInstance(project).getSelectedTextEditor());
             Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
             String documentChangeChannel = ChannelUtil.getChannel(peerCommunicationService.getCurrentSessionId(), ChannelType.DOCUMENT_CHANGE_CHANNEL);
-            document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel));
+            document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel, peerCommunicationService.getUserId()));
 
             peerCommunicationService.subscribeToChanges(editor);
         });

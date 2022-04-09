@@ -5,17 +5,23 @@ import com.github.cherrydevbomb.collabo.communication.subscriber.PeerInitStateTr
 import com.github.cherrydevbomb.collabo.communication.subscriber.RemoteDocumentChangeSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
+import com.github.cherrydevbomb.collabo.communication.util.UserIdGenerator;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
+import lombok.Getter;
 
 public class PeerCommunicationService {
 
     private static PeerCommunicationService peerCommunicationService;
 
+    @Getter
     private String currentSessionId;
+
+    @Getter
+    private String userId;
 
     private final StatefulRedisPubSubConnection<String, String> redisPubConnection;
     private final StatefulRedisPubSubConnection<String, String> redisSubConnection;
@@ -35,10 +41,6 @@ public class PeerCommunicationService {
         redisSubConnection = RedisConfig.getRedisSubConnection();
     }
 
-    public String getCurrentSessionId() {
-        return currentSessionId;
-    }
-
     public boolean isActivePeerSession() {
         return currentSessionId != null;
     }
@@ -48,6 +50,7 @@ public class PeerCommunicationService {
             return;
         }
 
+        this.userId = UserIdGenerator.generate();
         this.currentSessionId = sessionId;
         String initStateRequestChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_REQUEST_CHANNEL);
         String initStateTransferChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
@@ -82,6 +85,7 @@ public class PeerCommunicationService {
         remoteDocumentChangeSubscriber = null;
 
         currentSessionId = null;
+        userId = null;
 
         // TODO maybe close editor with shared file?
     }
