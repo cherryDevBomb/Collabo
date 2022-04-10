@@ -41,6 +41,11 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
             return; // TODO throw exception
         }
 
+        // only process if the change was broadcasted by another user
+        if (documentManager.getCurrentUserId().equals(documentChange.getElement().getId().getUserId())) {
+            return;
+        }
+
         switch (documentChange.getChangeType()) {
             case INSERT:
                 documentManager.insertElement(documentChange.getElement());

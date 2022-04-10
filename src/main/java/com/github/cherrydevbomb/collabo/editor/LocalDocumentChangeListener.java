@@ -28,13 +28,13 @@ public class LocalDocumentChangeListener implements DocumentListener {
     private final String userId;
     private final AtomicInteger operationCounter;
 
-    public LocalDocumentChangeListener(Editor editor, String documentChangeChannel, String userId) {
+    public LocalDocumentChangeListener(Editor editor, String documentChangeChannel, String userId, int initialOpCounter) {
         this.editor = editor;
         this.documentManager = DocumentManager.getInstance();
         this.redisConnection = RedisConfig.getRedisPubConnection();
         this.documentChangeChannel = documentChangeChannel;
         this.userId = userId;
-        this.operationCounter = new AtomicInteger(0);
+        this.operationCounter = new AtomicInteger(initialOpCounter);
     }
 
     @Override
@@ -58,7 +58,6 @@ public class LocalDocumentChangeListener implements DocumentListener {
         Element element = documentManager.buildNewElementToInsert(changeOffset, changeValue, operationId);
         // insert into local copy
         documentManager.insertElement(element);
-        EditorUtil.insertText(editor, documentManager.getElementOffset(element), element.getValue());
 
         DocumentChange documentChange = DocumentChange.builder()
                 .changeType(ChangeType.INSERT)

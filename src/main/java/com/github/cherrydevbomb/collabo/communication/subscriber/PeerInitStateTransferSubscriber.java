@@ -7,6 +7,7 @@ import com.github.cherrydevbomb.collabo.communication.service.PeerCommunicationS
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.github.cherrydevbomb.collabo.editor.LocalDocumentChangeListener;
+import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
@@ -35,10 +36,12 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
     private final ObjectMapper mapper = new ObjectMapper();
     private final PeerCommunicationService peerCommunicationService;
     private final Project project;
+    private final DocumentManager documentManager;
 
     public PeerInitStateTransferSubscriber(PeerCommunicationService peerCommunicationService, Project project) {
         this.peerCommunicationService = peerCommunicationService;
         this.project = project;
+        this.documentManager = DocumentManager.getInstance();
     }
 
     @Override
@@ -61,7 +64,10 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
         FileType fileType = ReadAction.compute(() -> FileTypeRegistry.getInstance().getFileTypeByFileName(initialState.getFileName()));
 
         AtomicReference<PsiFile> psiFile = new AtomicReference<>();
-        ApplicationManager.getApplication().invokeAndWait(() -> psiFile.set(WriteAction.compute(() -> PsiFileFactory.getInstance(project).createFileFromText(initialState.getFileName(), fileType, initialState.getText()))));
+        documentManager.setCurrentUserId(peerCommunicationService.getUserId());
+        documentManager.init(initialState.getTextElements());
+        String initialText = documentManager.getContentAsText();
+        ApplicationManager.getApplication().invokeAndWait(() -> psiFile.set(WriteAction.compute(() -> PsiFileFactory.getInstance(project).createFileFromText(initialState.getFileName(), fileType, initialText))));
 
         ApplicationManager.getApplication().invokeLater(() -> {
             PsiDirectory projectRoot = ReadAction.compute(() -> PsiDirectoryFactory.getInstance(project).createDirectory(project.getProjectFile().getParent()));
@@ -90,7 +96,7 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             Editor editor = ReadAction.compute(() -> FileEditorManager.getInstance(project).getSelectedTextEditor());
             Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
             String documentChangeChannel = ChannelUtil.getChannel(peerCommunicationService.getCurrentSessionId(), ChannelType.DOCUMENT_CHANGE_CHANNEL);
-            document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel, peerCommunicationService.getUserId()));
+            document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel, peerCommunicationService.getUserId(), 0));
 
             peerCommunicationService.subscribeToChanges(editor);
         });

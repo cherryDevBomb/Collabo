@@ -4,6 +4,7 @@ import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.model.InitialState;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
+import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -21,11 +22,13 @@ public class HostInitStateRequestSubscriber implements RedisPubSubListener<Strin
     private final StatefulRedisPubSubConnection<String, String> redisConnection;
     private final String initStateTransferChannel;
     private final VirtualFile virtualFile;
+    private final DocumentManager documentManager;
 
     public HostInitStateRequestSubscriber(String initStateTransferChannel, VirtualFile virtualFile) {
         this.redisConnection = RedisConfig.getRedisPubConnection();
         this.initStateTransferChannel = initStateTransferChannel;
         this.virtualFile = virtualFile;
+        this.documentManager = DocumentManager.getInstance();
     }
 
     @Override
@@ -36,9 +39,9 @@ public class HostInitStateRequestSubscriber implements RedisPubSubListener<Strin
 
         System.out.println("Host received: " + message);
 
-        Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
+//        Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
         InitialState initialState = InitialState.builder()
-                .text(document.getText())
+                .textElements(documentManager.getTextElements())
                 .fileName(virtualFile.getName())
                 .build();
 

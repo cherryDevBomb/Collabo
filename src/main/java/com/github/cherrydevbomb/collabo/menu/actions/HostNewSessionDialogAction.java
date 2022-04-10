@@ -68,7 +68,7 @@ public class HostNewSessionDialogAction extends AnAction {
             try {
 //                Document document = event.getData(CommonDataKeys.EDITOR).getDocument(); //TODO add null check or enable "start session" only if a document is open
                 VirtualFile virtualFile = event.getData(PlatformDataKeys.VIRTUAL_FILE);
-                hostCommunicationService.startSession(sessionId, virtualFile);
+                hostCommunicationService.startSession(sessionId, virtualFile, currentProject);
             } catch (Exception e) {
                 System.out.println("Error starting new session");
             }

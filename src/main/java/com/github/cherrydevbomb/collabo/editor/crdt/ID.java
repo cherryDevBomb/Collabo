@@ -2,11 +2,13 @@ package com.github.cherrydevbomb.collabo.editor.crdt;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Objects;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class ID {
 
     private String userId;

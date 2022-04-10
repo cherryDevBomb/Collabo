@@ -1,12 +1,22 @@
 package com.github.cherrydevbomb.collabo.editor.crdt;
 
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DocumentManager {
 
     private static DocumentManager documentManager;
 
+    @Getter
     private List<Element> textElements;
+
+    @Getter
+    @Setter
+    private String currentUserId;
 
     public static DocumentManager getInstance() {
         if (documentManager == null) {
@@ -18,9 +28,31 @@ public class DocumentManager {
     private DocumentManager() {
     }
 
-//    public List<String> getText() {
-//        return null;
-//    }
+    public void init(String text) {
+        textElements = new ArrayList<>();
+        int i = 0;
+        for (char c : text.toCharArray()) {
+            Element elem = Element.builder()
+                    .id(new ID(currentUserId, i))
+                    .originLeft((i > 0) ? new ID(currentUserId, i - 1) : null)
+                    .originRight((i < text.length() - 1) ? new ID(currentUserId, i + 1) : null)
+                    .value(String.valueOf(c))
+                    .build();
+            textElements.add(elem);
+            i++;
+        }
+    }
+
+    public void init(List<Element> elements) {
+        this.textElements = elements;
+    }
+
+    public String getContentAsText() {
+        return textElements.stream()
+                .filter(elem -> !elem.isDeleted())
+                .map(Element::getValue)
+                .collect(Collectors.joining());
+    }
 
     /**
      * Builds a new element to be inserted by calculating its left and right origins.
