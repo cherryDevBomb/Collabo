@@ -64,7 +64,7 @@ public class DocumentManager {
      */
     public Element buildNewElementToInsert(int offset, String value, ID operationId) {
         int positionIndex = findElementIndexByOffset(offset);
-        ID left = getElementAt(positionIndex - 1).getId();
+        ID left = getElementAt(positionIndex - 1).getId(); //TODO handle margins - getId will throw NPE for first and last element
         ID right = getElementAt(positionIndex).getId();
 
         return Element.builder()
