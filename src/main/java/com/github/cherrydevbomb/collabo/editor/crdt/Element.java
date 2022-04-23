@@ -1,14 +1,12 @@
 package com.github.cherrydevbomb.collabo.editor.crdt;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@EqualsAndHashCode(of = {"id"})
 public class Element {
 
     private ID id;

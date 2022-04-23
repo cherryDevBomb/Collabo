@@ -7,10 +7,10 @@ import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.github.cherrydevbomb.collabo.editor.EditorUtil;
 import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
-import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,16 +42,28 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
         }
 
         // only process if the change was broadcasted by another user
-        if (documentManager.getCurrentUserId().equals(documentChange.getElement().getId().getUserId())) {
+        if (documentManager.getCurrentUserId().equals(documentChange.getInitiator())) {
             return;
         }
 
         switch (documentChange.getChangeType()) {
             case INSERT:
                 documentManager.insertElement(documentChange.getElement());
+                //adjust caret position if it matches insert event's offset
+//                int caretOffset = ReadAction.compute(() -> editor.getCaretModel().getPrimaryCaret().getOffset()); TODO check if needed
+                Computable<Integer> getCaretOffsetLambda = () -> editor.getCaretModel().getPrimaryCaret().getOffset();
+                int caretOffset = ApplicationManager.getApplication().runReadAction(getCaretOffsetLambda);
+                if (caretOffset == documentChange.getOriginalEventOffset()) {
+                    Runnable runnable = () -> editor.getCaretModel().getPrimaryCaret().moveToOffset(caretOffset + 1);
+                    WriteCommandAction.runWriteCommandAction(editor.getProject(), runnable);
+                }
+                EditorUtil.insertText(editor, documentManager.getElementOffset(documentChange.getElement()), documentChange.getElement().getValue());
+                break;
+            case DELETE:
+                documentManager.markElementAsDeleted(documentChange.getElement());
+                EditorUtil.deleteText(editor, documentManager.getElementOffset(documentChange.getElement()), documentChange.getElement().getValue());
+                break;
         }
-
-        EditorUtil.insertText(editor, documentManager.getElementOffset(documentChange.getElement()), documentChange.getElement().getValue());
     }
 
     @Override

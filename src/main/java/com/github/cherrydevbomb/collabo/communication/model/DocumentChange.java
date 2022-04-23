@@ -19,6 +19,8 @@ public class DocumentChange {
 
     private Element element;
     private ChangeType changeType;
+    private String initiator;
+    private int originalEventOffset;
 
     public String serialize() {
         ObjectMapper mapper = new ObjectMapper();

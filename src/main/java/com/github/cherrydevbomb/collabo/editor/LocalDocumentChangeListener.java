@@ -6,13 +6,16 @@ import com.github.cherrydevbomb.collabo.communication.model.DocumentChange;
 import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.github.cherrydevbomb.collabo.editor.crdt.Element;
 import com.github.cherrydevbomb.collabo.editor.crdt.ID;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
+import com.intellij.openapi.util.Computable;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -42,10 +45,14 @@ public class LocalDocumentChangeListener implements DocumentListener {
 
     @Override
     public void documentChanged(@NotNull DocumentEvent event) {
-        DocumentListener.super.documentChanged(event);
+//        DocumentListener.super.documentChanged(event); TODO check if needed
 
-        int caretOffset = editor.getCaretModel().getPrimaryCaret().getOffset();
-        if (caretOffset != event.getOffset()) {
+//        int caretOffset = ReadAction.compute(() -> editor.getCaretModel().getPrimaryCaret().getOffset()); TODO check if needed
+        Computable<Integer> getCaretOffsetLambda = () -> editor.getCaretModel().getPrimaryCaret().getOffset();
+        int caretOffset = ApplicationManager.getApplication().runReadAction(getCaretOffsetLambda);
+        // check if caret is shifted because of auto indent
+        boolean isPrecededBySpaces = (caretOffset - event.getOffset() == 4) && StringUtils.isBlank(documentManager.getContentAsText().substring(event.getOffset() + 1, caretOffset + 1));
+        if (caretOffset != event.getOffset() && !isPrecededBySpaces) {
             // the change is a result of an edit done by another peer
             return;
         }
@@ -60,14 +67,15 @@ public class LocalDocumentChangeListener implements DocumentListener {
         }
 
         RedisPubSubAsyncCommands<String, String> async = redisConnection.async();
-        try {
-            if (CollectionUtils.isNotEmpty(documentChanges)) {
-                for (DocumentChange documentChange : documentChanges) {
+
+        if (CollectionUtils.isNotEmpty(documentChanges)) {
+            for (DocumentChange documentChange : documentChanges) {
+                try {
                     long subscriberCount = async.publish(documentChangeChannel, documentChange.serialize()).get();
+                } catch (InterruptedException | ExecutionException e) {
+                    log.error("Could not publish to channel {}", documentChangeChannel);
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("Could not publish to channel {}", documentChangeChannel);
         }
     }
 
@@ -88,15 +96,40 @@ public class LocalDocumentChangeListener implements DocumentListener {
             documentManager.insertElement(element);
         }
 
-        return newElements.stream()
-                .map(element -> DocumentChange.builder()
-                        .changeType(ChangeType.INSERT)
-                        .element(element)
-                        .build())
-                .collect(Collectors.toList());
+        return buildDocumentChangeEventList(newElements, ChangeType.INSERT, event.getOffset());
     }
 
     private List<DocumentChange> handleDeleteEvent(DocumentEvent event) {
-        return new ArrayList<>();
+        int changeOffset = event.getOffset();
+        String changeValue = event.getOldFragment().toString();
+        char[] changeValueCharArray = changeValue.toCharArray();
+
+        List<Element> deletedElements = new ArrayList<>();
+
+        int deletedCharIndex = documentManager.findElementIndexByOffset(changeOffset);
+        Element deletedElement = documentManager.markElementAsDeleted(deletedCharIndex, String.valueOf(changeValueCharArray[0]));
+        if (deletedElement.isDeleted()) {
+            deletedElements.add(deletedElement);
+        }
+        for (int i = 1; i < changeValueCharArray.length; i++) {
+            deletedCharIndex = documentManager.findIndexOfNextNotDeletedElement(deletedCharIndex);
+            Element nextDeletedElement = documentManager.markElementAsDeleted(deletedCharIndex, String.valueOf(changeValueCharArray[i]));
+            if (nextDeletedElement.isDeleted()) {
+                deletedElements.add(nextDeletedElement);
+            }
+        }
+
+        return buildDocumentChangeEventList(deletedElements, ChangeType.DELETE, event.getOffset());
+    }
+
+    private List<DocumentChange> buildDocumentChangeEventList(List<Element> elements, ChangeType changeType, int eventOffset) {
+        return elements.stream()
+                .map(element -> DocumentChange.builder()
+                        .changeType(changeType)
+                        .element(element)
+                        .initiator(userId)
+                        .originalEventOffset(eventOffset)
+                        .build())
+                .collect(Collectors.toList());
     }
 }

@@ -28,6 +28,11 @@ public class DocumentManager {
     private DocumentManager() {
     }
 
+    /**
+     * Transforms a string text to a list of elements. Used for creating initial state from a file content received by the host.
+     *
+     * @param text
+     */
     public void init(String text) {
         textElements = new ArrayList<>();
         int i = 0;
@@ -109,6 +114,35 @@ public class DocumentManager {
             }
         }
         textElements.add(insertPosition, toInsert);
+    }
+
+    public Element markElementAsDeleted(int index, String value) {
+        Element element = getElementAt(index);
+        if (element != null && element.getValue().equals(value)) {
+            element.setDeleted(true);
+        }
+        return element;
+    }
+
+    public void markElementAsDeleted(Element element) {
+        Element existingElement = findElementById(element.getId());
+        existingElement.setDeleted(true);
+    }
+
+
+    /**
+     * Given an index, find the index of next not deleted successor
+     *
+     * @param referenceIndex
+     * @return index of next not deleted successor
+     */
+    public int findIndexOfNextNotDeletedElement(int referenceIndex) {
+        int index = referenceIndex + 1;
+        Element currentElement = getElementAt(index);
+        while (currentElement != null && currentElement.isDeleted()) {
+            index++;
+        }
+        return index;
     }
 
     /**
