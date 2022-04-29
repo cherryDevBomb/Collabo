@@ -48,6 +48,7 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
 
         switch (documentChange.getChangeType()) {
             case INSERT:
+                // TODO change to return index
                 documentManager.insertElement(documentChange.getElement());
                 //adjust caret position if it matches insert event's offset
 //                int caretOffset = ReadAction.compute(() -> editor.getCaretModel().getPrimaryCaret().getOffset()); TODO check if needed

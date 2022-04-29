@@ -69,6 +69,7 @@ public class DocumentManager {
      */
     public Element buildNewElementToInsert(int offset, String value, ID operationId) {
         int positionIndex = findElementIndexByOffset(offset);
+        //TODO modify to use neighbours that are not deleted (use getElementByOffset with values offset-1, offset+1)
         ID left = getElementAt(positionIndex - 1).getId(); //TODO handle margins - getId will throw NPE for first and last element
         ID right = getElementAt(positionIndex).getId();
 
@@ -83,13 +84,13 @@ public class DocumentManager {
     /**
      * Inserts a given element into the list based on its left and right origins.
      *
-     * @param toInsert elsement to insert
+     * @param toInsert element to insert
      */
     public void insertElement(Element toInsert) {
         //assuming S = originLeft, c1, c2, ..., cn, originRight, then we say that element conflicts with c1, ..., cn
         int originLeft = textElements.indexOf(findElementById(toInsert.getOriginLeft()));
         int originRight = textElements.indexOf(findElementById(toInsert.getOriginRight()));
-        List<Element> conflictingOperations = textElements.subList(originLeft + 1, originRight);
+        List<Element> conflictingOperations = textElements.subList(originLeft + 1, originRight); // TODO filter deleted?
 
         int insertPosition = originLeft + 1;
         // Rule 2 - transitivity
