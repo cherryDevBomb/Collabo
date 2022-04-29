@@ -190,13 +190,13 @@ public class DocumentManager {
         int notDeleted = 0;
         int i = 0;
         while (notDeleted < offset || textElements.get(i).isDeleted()) {
-            if (i == textElements.size()) {
-                return -1;
-            }
             if (!textElements.get(i).isDeleted()) {
                 notDeleted++;
             }
             i++;
+            if (i == textElements.size()) {
+                return -1;
+            }
         }
         return i;
     }
