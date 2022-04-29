@@ -28,6 +28,7 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
     }
 
     @Override
+    synchronized
     public void message(String channel, String message) {
         if (!ChannelUtil.isOfType(channel, ChannelType.DOCUMENT_CHANGE_CHANNEL)) {
             return;
@@ -51,20 +52,25 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
                 // TODO change to return index
                 documentManager.insertElement(documentChange.getElement());
                 //adjust caret position if it matches insert event's offset
-//                int caretOffset = ReadAction.compute(() -> editor.getCaretModel().getPrimaryCaret().getOffset()); TODO check if needed
                 Computable<Integer> getCaretOffsetLambda = () -> editor.getCaretModel().getPrimaryCaret().getOffset();
                 int caretOffset = ApplicationManager.getApplication().runReadAction(getCaretOffsetLambda);
                 if (caretOffset == documentChange.getOriginalEventOffset()) {
                     Runnable runnable = () -> editor.getCaretModel().getPrimaryCaret().moveToOffset(caretOffset + 1);
                     WriteCommandAction.runWriteCommandAction(editor.getProject(), runnable);
                 }
-                EditorUtil.insertText(editor, documentManager.getElementOffset(documentChange.getElement()), documentChange.getElement().getValue());
+                EditorUtil.insertText(editor, documentManager, documentChange.getElement());
                 break;
             case DELETE:
                 documentManager.markElementAsDeleted(documentChange.getElement());
-                EditorUtil.deleteText(editor, documentManager.getElementOffset(documentChange.getElement()), documentChange.getElement().getValue());
+                EditorUtil.deleteText(editor, documentManager, documentChange.getElement());
                 break;
         }
+
+        String changeValue = documentChange.getElement().getValue().replace("\n", "\\n").replace(" ", "\\s");
+        log.info("handleRemoteMessage EVENT \n" +
+                "changeOffset: " + documentChange.getOriginalEventOffset() + "; changeValue: " + changeValue + "\n" +
+                "documentManagerTextAsString:\n" + documentManager.getContentAsText().replace("\n", "\\n").replace(" ", "\\s") +
+                "\n----------------------------\n");
     }
 
     @Override

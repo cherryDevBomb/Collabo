@@ -19,6 +19,7 @@ import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -44,17 +45,19 @@ public class LocalDocumentChangeListener implements DocumentListener {
     }
 
     @Override
+    synchronized
     public void documentChanged(@NotNull DocumentEvent event) {
-//        DocumentListener.super.documentChanged(event); TODO check if needed
-
-//        int caretOffset = ReadAction.compute(() -> editor.getCaretModel().getPrimaryCaret().getOffset()); TODO check if needed
         Computable<Integer> getCaretOffsetLambda = () -> editor.getCaretModel().getPrimaryCaret().getOffset();
         int caretOffset = ApplicationManager.getApplication().runReadAction(getCaretOffsetLambda);
-        // check if caret is shifted because of auto indent
-        boolean isPrecededBySpaces = (caretOffset - event.getOffset() == 4) && StringUtils.isBlank(documentManager.getContentAsText().substring(event.getOffset() + 1, caretOffset + 1));
-        if (caretOffset != event.getOffset() && !isPrecededBySpaces) {
-            // the change is a result of an edit done by another peer
-            return;
+
+        String changeValue = event.getOldLength() == 0 ? event.getNewFragment().toString() : event.getOldFragment().toString();
+        if (changeValue.length() > 1) {
+            // only local changes can have a length of more than 1 character
+        } else {
+            if (caretOffset != event.getOffset()) {
+                // the change is a result of an edit done by another peer
+                return;
+            }
         }
 
         // broadcast event if document change was done on the current peer
@@ -65,6 +68,13 @@ public class LocalDocumentChangeListener implements DocumentListener {
         } else if (event.getNewLength() == 0) {
             documentChanges = handleDeleteEvent(event);
         }
+
+        changeValue = event.getOldLength() == 0 ? event.getNewFragment().toString() : event.getOldFragment().toString();
+        changeValue = changeValue.replace("\n", "\\n").replace(" ", "\\s");
+        log.info("documentChanged EVENT \n" +
+                "changeOffset: " + event.getOffset() + "; changeValue: " + changeValue + "\n" +
+                "documentManagerTextAsString:\n" + documentManager.getContentAsText().replace("\n", "\\n").replace(" ", "\\s") +
+                "\n----------------------------\n");
 
         RedisPubSubAsyncCommands<String, String> async = redisConnection.async();
 
@@ -107,6 +117,10 @@ public class LocalDocumentChangeListener implements DocumentListener {
         List<Element> deletedElements = new ArrayList<>();
 
         int deletedCharIndex = documentManager.findElementIndexByOffset(changeOffset);
+        if (deletedCharIndex == -1) {
+            return Collections.emptyList();
+        }
+
         Element deletedElement = documentManager.markElementAsDeleted(deletedCharIndex, String.valueOf(changeValueCharArray[0]));
         if (deletedElement.isDeleted()) {
             deletedElements.add(deletedElement);
@@ -114,7 +128,7 @@ public class LocalDocumentChangeListener implements DocumentListener {
         for (int i = 1; i < changeValueCharArray.length; i++) {
             deletedCharIndex = documentManager.findIndexOfNextNotDeletedElement(deletedCharIndex);
             Element nextDeletedElement = documentManager.markElementAsDeleted(deletedCharIndex, String.valueOf(changeValueCharArray[i]));
-            if (nextDeletedElement.isDeleted()) {
+            if (nextDeletedElement != null && nextDeletedElement.isDeleted()) {
                 deletedElements.add(nextDeletedElement);
             }
         }

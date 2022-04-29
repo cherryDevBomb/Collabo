@@ -2,11 +2,14 @@ package com.github.cherrydevbomb.collabo.editor.crdt;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class DocumentManager {
 
     private static DocumentManager documentManager;
@@ -34,7 +37,7 @@ public class DocumentManager {
      * @param text
      */
     public void init(String text) {
-        textElements = new ArrayList<>();
+        textElements = Collections.synchronizedList(new ArrayList<>());
         int i = 0;
         for (char c : text.toCharArray()) {
             Element elem = Element.builder()
@@ -68,10 +71,10 @@ public class DocumentManager {
      * @return element built with the given data
      */
     public Element buildNewElementToInsert(int offset, String value, ID operationId) {
-        int positionIndex = findElementIndexByOffset(offset);
-        //TODO modify to use neighbours that are not deleted (use getElementByOffset with values offset-1, offset+1)
-        ID left = getElementAt(positionIndex - 1).getId(); //TODO handle margins - getId will throw NPE for first and last element
-        ID right = getElementAt(positionIndex).getId();
+        Element leftNeighbour = findElementByOffset(offset - 1);
+        Element rightNeighbour = findElementByOffset(offset); // not +1 because the new element is not inserted yet
+        ID left = leftNeighbour != null ? leftNeighbour.getId() : null;
+        ID right = rightNeighbour != null ? rightNeighbour.getId() : null;
 
         return Element.builder()
                 .id(operationId)
@@ -88,8 +91,10 @@ public class DocumentManager {
      */
     public void insertElement(Element toInsert) {
         //assuming S = originLeft, c1, c2, ..., cn, originRight, then we say that element conflicts with c1, ..., cn
-        int originLeft = textElements.indexOf(findElementById(toInsert.getOriginLeft()));
-        int originRight = textElements.indexOf(findElementById(toInsert.getOriginRight()));
+        Element originLeftElement = findElementById(toInsert.getOriginLeft());
+        int originLeft = originLeftElement != null ? textElements.indexOf(originLeftElement) : 0;
+        Element originRightElement = findElementById(toInsert.getOriginRight());
+        int originRight = originRightElement != null ? textElements.indexOf(originRightElement) : textElements.size();
         List<Element> conflictingOperations = textElements.subList(originLeft + 1, originRight); // TODO filter deleted?
 
         int insertPosition = originLeft + 1;
@@ -118,10 +123,14 @@ public class DocumentManager {
     }
 
     public Element markElementAsDeleted(int index, String value) {
+        log.info("markElementAsDeleted: index=" + index + "; value=" + value.replace("\n", "\\n").replace(" ", "\\s"));
+
         Element element = getElementAt(index);
         if (element != null && element.getValue().equals(value)) {
             element.setDeleted(true);
+            textElements.set(index, element);
         }
+        log.info("elementFound: " + (element != null ? element.toString() : "null"));
         return element;
     }
 
@@ -142,6 +151,7 @@ public class DocumentManager {
         Element currentElement = getElementAt(index);
         while (currentElement != null && currentElement.isDeleted()) {
             index++;
+            currentElement = getElementAt(index);
         }
         return index;
     }
@@ -179,13 +189,23 @@ public class DocumentManager {
     public int findElementIndexByOffset(int offset) {
         int notDeleted = 0;
         int i = 0;
-        while (notDeleted < offset) {
+        while (notDeleted < offset || textElements.get(i).isDeleted()) {
+            if (i == textElements.size()) {
+                return -1;
+            }
             if (!textElements.get(i).isDeleted()) {
                 notDeleted++;
             }
             i++;
         }
         return i;
+    }
+
+    public Element findElementByOffset(int offset) {
+        if (offset < 0 || offset >= textElements.size()) {
+            return null;
+        }
+        return textElements.get(findElementIndexByOffset(offset));
     }
 
     public int getElementOffset(Element element) {
