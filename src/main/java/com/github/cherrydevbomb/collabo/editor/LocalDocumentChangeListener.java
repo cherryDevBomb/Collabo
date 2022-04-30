@@ -69,7 +69,6 @@ public class LocalDocumentChangeListener implements DocumentListener {
             documentChanges = handleDeleteEvent(event);
         }
 
-        changeValue = event.getOldLength() == 0 ? event.getNewFragment().toString() : event.getOldFragment().toString();
         changeValue = changeValue.replace("\n", "\\n").replace(" ", "\\s");
         log.info("documentChanged EVENT \n" +
                 "changeOffset: " + event.getOffset() + "; changeValue: " + changeValue + "\n" +

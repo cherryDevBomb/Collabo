@@ -205,7 +205,11 @@ public class DocumentManager {
         if (offset < 0 || offset >= textElements.size()) {
             return null;
         }
-        return textElements.get(findElementIndexByOffset(offset));
+        int index = findElementIndexByOffset(offset);
+        if (index >= 0 && index < textElements.size()) {
+            return textElements.get(index);
+        }
+        return null;
     }
 
     public int getElementOffset(Element element) {
