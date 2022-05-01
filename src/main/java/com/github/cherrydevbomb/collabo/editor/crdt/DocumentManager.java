@@ -1,5 +1,6 @@
 package com.github.cherrydevbomb.collabo.editor.crdt;
 
+import com.github.cherrydevbomb.collabo.communication.service.DeleteAckService;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,8 @@ public class DocumentManager {
     @Setter
     private String currentUserId;
 
+    private final DeleteAckService deleteAckService;
+
     public static DocumentManager getInstance() {
         if (documentManager == null) {
             documentManager = new DocumentManager();
@@ -29,6 +32,7 @@ public class DocumentManager {
     }
 
     private DocumentManager() {
+        deleteAckService = DeleteAckService.getInstance();
     }
 
     /**
@@ -129,6 +133,7 @@ public class DocumentManager {
         if (element != null && element.getValue().equals(value)) {
             element.setDeleted(true);
             textElements.set(index, element);
+            deleteAckService.sendDeleteAck(element, currentUserId);
         }
         log.info("elementFound: " + (element != null ? element.toString() : "null"));
         return element;
@@ -137,8 +142,27 @@ public class DocumentManager {
     public void markElementAsDeleted(Element element) {
         Element existingElement = findElementById(element.getId());
         existingElement.setDeleted(true);
+        deleteAckService.sendDeleteAck(existingElement, currentUserId);
     }
 
+    public void garbageCollectElement(ID elementId) {
+        Element element = findElementById(elementId);
+        int elementIndex = textElements.indexOf(element);
+
+        // reassign origins
+        Element leftNeighbour = getElementAt(findIndexOfPreviousNotDeletedElement(elementIndex));
+        Element rightNeighbour = getElementAt(findIndexOfNextNotDeletedElement(elementIndex));
+        for (Element e : textElements) {
+            if (e.getOriginLeft() != null && e.getOriginLeft().equals(elementId)) {
+                e.setOriginLeft(leftNeighbour != null ? leftNeighbour.getId() : null);
+            }
+            if (e.getOriginRight() != null && e.getOriginRight().equals(elementId)) {
+                e.setOriginRight(rightNeighbour != null ? rightNeighbour.getId() : null);
+            }
+        }
+
+        textElements.remove(element);
+    }
 
     /**
      * Given an index, find the index of next not deleted successor
@@ -151,6 +175,22 @@ public class DocumentManager {
         Element currentElement = getElementAt(index);
         while (currentElement != null && currentElement.isDeleted()) {
             index++;
+            currentElement = getElementAt(index);
+        }
+        return index;
+    }
+
+    /**
+     * Given an index, find the index of next not deleted successor
+     *
+     * @param referenceIndex
+     * @return index of next not deleted successor
+     */
+    public int findIndexOfPreviousNotDeletedElement(int referenceIndex) {
+        int index = referenceIndex - 1;
+        Element currentElement = getElementAt(index);
+        while (currentElement != null && currentElement.isDeleted()) {
+            index--;
             currentElement = getElementAt(index);
         }
         return index;

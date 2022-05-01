@@ -2,6 +2,7 @@ package com.github.cherrydevbomb.collabo.editor;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.model.ChangeType;
+import com.github.cherrydevbomb.collabo.communication.model.DeleteAck;
 import com.github.cherrydevbomb.collabo.communication.model.DocumentChange;
 import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.github.cherrydevbomb.collabo.editor.crdt.Element;
@@ -15,7 +16,6 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;

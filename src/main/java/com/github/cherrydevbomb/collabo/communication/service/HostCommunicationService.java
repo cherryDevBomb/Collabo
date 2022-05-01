@@ -51,6 +51,9 @@ public class HostCommunicationService extends CommunicationService {
         String initStateRequestChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_REQUEST_CHANNEL);
         String initStateTransferChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
         String documentChangeChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DOCUMENT_CHANGE_CHANNEL);
+        String deleteAckChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DELETE_ACK_CHANNEL);
+
+        DeleteAckService.getInstance().setDeleteAckChannel(deleteAckChannel);
 
         hostInitStateRequestSubscriber = new HostInitStateRequestSubscriber(initStateTransferChannel, virtualFile);
         redisSubConnection.addListener(hostInitStateRequestSubscriber);
@@ -73,6 +76,9 @@ public class HostCommunicationService extends CommunicationService {
         // add listener for heartbeat and start broadcasting own heartbeat
         subscribeToHeartbeatChannel();
         startHeartbeat();
+
+        // add listener for delete acknowledgements
+        subscribeToDeleteAckChannel();
     }
 
     public void stopSession() {
@@ -85,6 +91,7 @@ public class HostCommunicationService extends CommunicationService {
 
         stopHeartbeat();
         unsubscribeHeartbeat();
+        unsubscribeFromDeleteAckChannel();
 
         invalidateSession();
         // TODO send message to peers to notify that session was stopped

@@ -37,6 +37,9 @@ public class PeerCommunicationService extends CommunicationService {
         this.currentSessionId = sessionId;
         String initStateRequestChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_REQUEST_CHANNEL);
         String initStateTransferChannel = ChannelUtil.getChannel(sessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
+        String deleteAckChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DELETE_ACK_CHANNEL);
+
+        DeleteAckService.getInstance().setDeleteAckChannel(deleteAckChannel);
 
         peerInitStateTransferSubscriber = new PeerInitStateTransferSubscriber(this, project);
         redisSubConnection.addListener(peerInitStateTransferSubscriber);
@@ -73,6 +76,7 @@ public class PeerCommunicationService extends CommunicationService {
 
         stopHeartbeat();
         unsubscribeHeartbeat();
+        unsubscribeFromDeleteAckChannel();
 
         invalidateSession();
         // TODO maybe close editor with shared file?

@@ -34,7 +34,6 @@ public class HeartbeatSubscriber implements RedisPubSubListener<String, String> 
         }
 
         if (heartbeat != null) {
-            System.out.println("RECEIVED HEARTBEAT from " + heartbeat.getUserId());
             heartbeatService.addHeartbeat(heartbeat);
         }
     }

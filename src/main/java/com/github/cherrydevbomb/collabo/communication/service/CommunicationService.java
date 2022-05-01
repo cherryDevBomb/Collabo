@@ -2,6 +2,7 @@ package com.github.cherrydevbomb.collabo.communication.service;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.model.Heartbeat;
+import com.github.cherrydevbomb.collabo.communication.subscriber.DeleteAckSubscriber;
 import com.github.cherrydevbomb.collabo.communication.subscriber.HeartbeatSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
@@ -27,6 +28,7 @@ public class CommunicationService {
     protected final StatefulRedisPubSubConnection<String, String> redisSubConnection;
 
     RedisPubSubListener<String, String> heartbeatSubscriber;
+    RedisPubSubListener<String, String> deleteAckSubscriber;
 
     private ScheduledExecutorService heartbeatExecutor;
 
@@ -60,19 +62,33 @@ public class CommunicationService {
         heartbeatExecutor.shutdown();
     }
 
+    public void subscribeToDeleteAckChannel() {
+        String deleteAckChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DELETE_ACK_CHANNEL);
+        deleteAckSubscriber = new DeleteAckSubscriber();
+        redisSubConnection.addListener(deleteAckSubscriber);
+        RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
+        asyncSub.subscribe(deleteAckChannel);
+    }
+
+    protected void unsubscribeFromDeleteAckChannel() {
+        String deleteAckChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DELETE_ACK_CHANNEL);
+        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
+        async.unsubscribe(deleteAckChannel);
+        redisSubConnection.removeListener(deleteAckSubscriber);
+        deleteAckSubscriber = null;
+    }
+
     protected void invalidateSession() {
         currentSessionId = null;
         userId = null;
     }
 
     private void sendHeartbeatMessage() {
-        System.out.println("HEARTBEAT");
         String heartbeatChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.HEARTBEAT_CHANNEL);
         RedisPubSubAsyncCommands<String, String> asyncPub = redisPubConnection.async();
         Heartbeat heartbeat = new Heartbeat(userId, System.currentTimeMillis());
         try {
             long subscriberCount = asyncPub.publish(heartbeatChannel, heartbeat.serialize()).get();
-            System.out.println(subscriberCount);
         } catch (Exception e) {
             e.printStackTrace();
         }

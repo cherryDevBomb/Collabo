@@ -96,12 +96,16 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             Editor editor = ReadAction.compute(() -> FileEditorManager.getInstance(project).getSelectedTextEditor());
             Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
             String documentChangeChannel = ChannelUtil.getChannel(peerCommunicationService.getCurrentSessionId(), ChannelType.DOCUMENT_CHANGE_CHANNEL);
+            String deleteAckChannel = ChannelUtil.getChannel(peerCommunicationService.getCurrentSessionId(), ChannelType.DELETE_ACK_CHANNEL);
             document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel, peerCommunicationService.getUserId(), 0));
 
             peerCommunicationService.subscribeToChanges(editor);
 
             // add listener for heartbeat and start broadcasting own heartbeat
             peerCommunicationService.subscribeToHeartbeat();
+
+            // add listener for delete acknowledgements
+            peerCommunicationService.subscribeToDeleteAckChannel();
         });
     }
 
