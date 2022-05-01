@@ -71,6 +71,7 @@ public class HostNewSessionDialogAction extends AnAction {
                 hostCommunicationService.startSession(sessionId, virtualFile, currentProject);
             } catch (Exception e) {
                 System.out.println("Error starting new session");
+                return;
             }
             System.out.println("Session started");
         } else if (selected == Messages.CANCEL) {

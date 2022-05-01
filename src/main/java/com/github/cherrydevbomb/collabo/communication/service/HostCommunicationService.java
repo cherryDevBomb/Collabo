@@ -1,6 +1,5 @@
 package com.github.cherrydevbomb.collabo.communication.service;
 
-import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.subscriber.HostInitStateRequestSubscriber;
 import com.github.cherrydevbomb.collabo.communication.subscriber.RemoteDocumentChangeSubscriber;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
@@ -16,18 +15,11 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import io.lettuce.core.pubsub.RedisPubSubListener;
-import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 
-public class HostCommunicationService {
+public class HostCommunicationService extends CommunicationService {
 
     private static HostCommunicationService hostCommunicationService;
-
-    private String currentSessionId;
-    private String userId;
-
-    private StatefulRedisPubSubConnection<String, String> redisPubConnection;
-    private StatefulRedisPubSubConnection<String, String> redisSubConnection;
 
     private RedisPubSubListener<String, String> hostInitStateRequestSubscriber;
     private RedisPubSubListener<String, String> remoteDocumentChangeSubscriber;
@@ -42,8 +34,6 @@ public class HostCommunicationService {
     }
 
     private HostCommunicationService() {
-        redisPubConnection = RedisConfig.getRedisPubConnection();
-        redisSubConnection = RedisConfig.getRedisSubConnection();
         documentManager = DocumentManager.getInstance();
     }
 
@@ -79,6 +69,10 @@ public class HostCommunicationService {
         redisSubConnection.addListener(remoteDocumentChangeSubscriber);
         RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
         asyncSub.subscribe(documentChangeChannel);
+
+        // add listener for heartbeat and start broadcasting own heartbeat
+        subscribeToHeartbeatChannel();
+        startHeartbeat();
     }
 
     public void stopSession() {
@@ -88,9 +82,11 @@ public class HostCommunicationService {
         redisSubConnection.removeListener(hostInitStateRequestSubscriber);
 
         hostInitStateRequestSubscriber = null;
-        currentSessionId = null;
-        userId = null;
 
+        stopHeartbeat();
+        unsubscribeHeartbeat();
+
+        invalidateSession();
         // TODO send message to peers to notify that session was stopped
     }
 }

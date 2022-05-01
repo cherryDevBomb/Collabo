@@ -99,6 +99,9 @@ public class PeerInitStateTransferSubscriber implements RedisPubSubListener<Stri
             document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel, peerCommunicationService.getUserId(), 0));
 
             peerCommunicationService.subscribeToChanges(editor);
+
+            // add listener for heartbeat and start broadcasting own heartbeat
+            peerCommunicationService.subscribeToHeartbeat();
         });
     }
 

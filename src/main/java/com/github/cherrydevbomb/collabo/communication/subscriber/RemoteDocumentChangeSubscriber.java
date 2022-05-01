@@ -21,7 +21,6 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
     private final Editor editor;
     private final DocumentManager documentManager;
 
-
     public RemoteDocumentChangeSubscriber(Editor editor) {
         this.editor = editor;
         this.documentManager = DocumentManager.getInstance();
