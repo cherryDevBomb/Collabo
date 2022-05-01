@@ -1,9 +1,0 @@
-spring:
-  redis:
-#    database: test
-#    host: redis-19620.c135.eu-central-1-1.ec2.cloud.redislabs.com
-#    port: 19620
-    host: 127.0.0.1
-    port: 6379
-#    password: CxGqYVotW6LKrY2yDEMT7ue9bsN8iBbL
-    timeout: 60000
