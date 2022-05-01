@@ -181,10 +181,10 @@ public class DocumentManager {
     }
 
     /**
-     * Given an index, find the index of next not deleted successor
+     * Given an index, find the index of previous not deleted predecessor
      *
      * @param referenceIndex
-     * @return index of next not deleted successor
+     * @return index of previous not deleted predecessor
      */
     public int findIndexOfPreviousNotDeletedElement(int referenceIndex) {
         int index = referenceIndex - 1;
