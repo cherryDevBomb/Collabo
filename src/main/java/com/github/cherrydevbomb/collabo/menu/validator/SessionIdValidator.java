@@ -5,6 +5,8 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.util.NlsSafe;
 
+import java.util.concurrent.ExecutionException;
+
 public class SessionIdValidator implements InputValidator {
 
     private PeerCommunicationService peerCommunicationService;
@@ -18,18 +20,16 @@ public class SessionIdValidator implements InputValidator {
 
     @Override
     public boolean checkInput(@NlsSafe String inputString) {
-        // TODO implement validation of sessionId
-        System.out.println("Input checked");
         return true;
     }
 
     @Override
     public boolean canClose(@NlsSafe String inputString) {
-        // TODO trigger connecting to session
-        System.out.println(inputString);
-
-        peerCommunicationService.joinSession(inputString, project);
-
+        try {
+            peerCommunicationService.joinSession(inputString, project);
+        } catch (Exception e) {
+            return false;
+        }
         return true;
     }
 }

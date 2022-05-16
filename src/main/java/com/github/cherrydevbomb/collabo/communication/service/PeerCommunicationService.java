@@ -10,6 +10,8 @@ import com.intellij.openapi.project.Project;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 
+import java.util.concurrent.ExecutionException;
+
 public class PeerCommunicationService extends CommunicationService {
 
     private static PeerCommunicationService peerCommunicationService;
@@ -28,7 +30,7 @@ public class PeerCommunicationService extends CommunicationService {
         return currentSessionId != null;
     }
 
-    public void joinSession(String sessionId, Project project) {
+    public void joinSession(String sessionId, Project project) throws ExecutionException, InterruptedException {
         if (isActivePeerSession()) {
             return;
         }
@@ -47,7 +49,10 @@ public class PeerCommunicationService extends CommunicationService {
         asyncSub.subscribe(initStateTransferChannel);
 
         RedisPubSubAsyncCommands<String, String> asyncPub = redisPubConnection.async();
-        asyncPub.publish(initStateRequestChannel, "Peer requests to join session " + sessionId);
+        long subscriberCount = asyncPub.publish(initStateRequestChannel, "Peer requests to join session " + sessionId).get();
+        if (subscriberCount == 0) {
+            throw new RuntimeException("InvalidSessionId");
+        }
     }
 
     public void subscribeToChanges(Editor editor) {

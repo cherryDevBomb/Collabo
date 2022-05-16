@@ -1,6 +1,7 @@
 package com.github.cherrydevbomb.collabo.menu.actions;
 
 import com.github.cherrydevbomb.collabo.communication.service.HostCommunicationService;
+import com.github.cherrydevbomb.collabo.communication.service.PeerCommunicationService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -18,18 +19,20 @@ import java.util.UUID;
 public class HostNewSessionDialogAction extends AnAction {
 
     private final HostCommunicationService hostCommunicationService;
+    private final PeerCommunicationService peerCommunicationService;
 
     public HostNewSessionDialogAction() {
         super();
         this.hostCommunicationService = HostCommunicationService.getInstance();
+        this.peerCommunicationService = PeerCommunicationService.getInstance();
     }
 
     @Override
     public void update(@NotNull AnActionEvent event) {
         // enable only if a project is open
-        // TODO disable when editing in another session
         Project currentProject = event.getProject();
-        event.getPresentation().setEnabled(currentProject != null && !hostCommunicationService.isHostingSession());
+        VirtualFile virtualFile = event.getData(PlatformDataKeys.VIRTUAL_FILE);
+        event.getPresentation().setEnabled(currentProject != null && virtualFile != null && !hostCommunicationService.isHostingSession() && !peerCommunicationService.isActivePeerSession());
     }
 
     @Override
@@ -46,8 +49,6 @@ public class HostNewSessionDialogAction extends AnAction {
 
         // Create sessionId
         String sessionId = UUID.randomUUID().toString();
-
-        sessionId = "X"; //TODO remove after debug
 
         // Create dialog text
         message.append("\n\n")
@@ -66,7 +67,6 @@ public class HostNewSessionDialogAction extends AnAction {
                     .setContents(new StringSelection(sessionId), null);
 
             try {
-//                Document document = event.getData(CommonDataKeys.EDITOR).getDocument(); //TODO add null check or enable "start session" only if a document is open
                 VirtualFile virtualFile = event.getData(PlatformDataKeys.VIRTUAL_FILE);
                 hostCommunicationService.startSession(sessionId, virtualFile, currentProject);
             } catch (Exception e) {
