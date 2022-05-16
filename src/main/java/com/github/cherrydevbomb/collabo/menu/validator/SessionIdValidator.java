@@ -5,8 +5,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.util.NlsSafe;
 
-import java.util.concurrent.ExecutionException;
-
 public class SessionIdValidator implements InputValidator {
 
     private PeerCommunicationService peerCommunicationService;
