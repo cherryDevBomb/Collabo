@@ -4,9 +4,7 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="HOST" value="127.0.0.1" />
-          <entry key="PASSWORD" value="CxGqYVotW6LKrY2yDEMT7ue9bsN8iBbL" />
-          <entry key="PORT" value="6379" />
+          <entry key="HOST" value="127.0.0.1:6379" />
         </map>
       </option>
       <option name="executionName" />

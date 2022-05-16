@@ -7,9 +7,6 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 public class RedisConfig {
 
     private static final String host = System.getenv("HOST");
-    private static final int port = Integer.parseInt(System.getenv("PORT"));
-    //    private final String user = System.getenv("USER");
-    private static final String password = System.getenv("PASSWORD");
 
     private static StatefulRedisPubSubConnection<String, String> redisPubConnection;
     private static StatefulRedisPubSubConnection<String, String> redisSubConnection;
@@ -29,12 +26,7 @@ public class RedisConfig {
     }
 
     private static StatefulRedisPubSubConnection<String, String> initRedisConnection() {
-        RedisURI redisURI = RedisURI.Builder
-                .redis(host, port)
-//                .withPassword(new StringBuilder("password"))
-//                .withDatabase(1)
-                .build();
-
+        RedisURI redisURI = RedisURI.create(host);
         RedisClient redisClient = RedisClient.create(redisURI);
         return redisClient.connectPubSub();
     }
