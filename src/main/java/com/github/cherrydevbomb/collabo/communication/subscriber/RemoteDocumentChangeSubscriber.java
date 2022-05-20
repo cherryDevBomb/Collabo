@@ -69,12 +69,6 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
                 dbLogger.log(Table.DELETE_REMOTE, documentChange.getElement().getId().toString(), documentManager.getCurrentUserId(), System.currentTimeMillis());
                 break;
         }
-
-        String changeValue = documentChange.getElement().getValue().replace("\n", "\\n").replace(" ", "\\s");
-        log.info("handleRemoteMessage EVENT \n" +
-                "changeOffset: " + documentChange.getOriginalEventOffset() + "; changeValue: " + changeValue + "\n" +
-                "documentManagerTextAsString:\n" + documentManager.getContentAsText().replace("\n", "\\n").replace(" ", "\\s") +
-                "\n----------------------------\n");
     }
 
     @Override
