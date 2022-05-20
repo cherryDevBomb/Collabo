@@ -69,12 +69,6 @@ public class LocalDocumentChangeListener implements DocumentListener {
             documentChanges = handleDeleteEvent(event);
         }
 
-        changeValue = changeValue.replace("\n", "\\n").replace(" ", "\\s");
-        log.info("documentChanged EVENT \n" +
-                "changeOffset: " + event.getOffset() + "; changeValue: " + changeValue + "\n" +
-                "documentManagerTextAsString:\n" + documentManager.getContentAsText().replace("\n", "\\n").replace(" ", "\\s") +
-                "\n----------------------------\n");
-
         RedisPubSubAsyncCommands<String, String> async = redisConnection.async();
 
         if (CollectionUtils.isNotEmpty(documentChanges)) {

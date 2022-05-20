@@ -63,12 +63,6 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
                 EditorUtil.deleteText(editor, documentManager, documentChange.getElement());
                 break;
         }
-
-        String changeValue = documentChange.getElement().getValue().replace("\n", "\\n").replace(" ", "\\s");
-        log.info("handleRemoteMessage EVENT \n" +
-                "changeOffset: " + documentChange.getOriginalEventOffset() + "; changeValue: " + changeValue + "\n" +
-                "documentManagerTextAsString:\n" + documentManager.getContentAsText().replace("\n", "\\n").replace(" ", "\\s") +
-                "\n----------------------------\n");
     }
 
     @Override
