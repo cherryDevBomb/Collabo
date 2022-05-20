@@ -8,6 +8,8 @@ import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.github.cherrydevbomb.collabo.editor.crdt.ID;
+import com.github.cherrydevbomb.collabo.persistence.DBLogger;
+import com.github.cherrydevbomb.collabo.persistence.Table;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,11 +19,13 @@ public class DeleteAckSubscriber implements RedisPubSubListener<String, String> 
     private final ObjectMapper mapper;
     private final DeleteAckService deleteAckService;
     private final DocumentManager documentManager;
+    private final DBLogger dbLogger;
 
     public DeleteAckSubscriber() {
         this.mapper = new ObjectMapper();
         this.deleteAckService = DeleteAckService.getInstance();
         this.documentManager = DocumentManager.getInstance();
+        this.dbLogger = DBLogger.getInstance();
     }
 
     @Override
@@ -46,6 +50,7 @@ public class DeleteAckSubscriber implements RedisPubSubListener<String, String> 
         if (deleteAckService.allAcksReceived(elementId)) {
             documentManager.garbageCollectElement(elementId);
             deleteAckService.removeElementFromAckMap(elementId);
+            dbLogger.log(Table.GARBAGE_COLLECT, elementId.toString(), documentManager.getCurrentUserId(), System.currentTimeMillis());
         }
     }
 

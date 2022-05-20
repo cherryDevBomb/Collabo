@@ -18,4 +18,9 @@ public class ID {
         boolean isUserPredecessor = this.userId.compareToIgnoreCase(other.getUserId()) < 0;
         return isUserPredecessor || (this.userId.equalsIgnoreCase(other.getUserId()) && timestamp < other.getTimestamp());
     }
+
+    @Override
+    public String toString() {
+        return userId + "-" + timestamp;
+    }
 }

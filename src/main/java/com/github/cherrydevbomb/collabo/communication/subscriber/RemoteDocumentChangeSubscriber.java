@@ -7,6 +7,8 @@ import com.github.cherrydevbomb.collabo.communication.util.ChannelType;
 import com.github.cherrydevbomb.collabo.communication.util.ChannelUtil;
 import com.github.cherrydevbomb.collabo.editor.EditorUtil;
 import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
+import com.github.cherrydevbomb.collabo.persistence.DBLogger;
+import com.github.cherrydevbomb.collabo.persistence.Table;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Editor;
@@ -20,10 +22,12 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
     private final ObjectMapper mapper = new ObjectMapper();
     private final Editor editor;
     private final DocumentManager documentManager;
+    private final DBLogger dbLogger;
 
     public RemoteDocumentChangeSubscriber(Editor editor) {
         this.editor = editor;
         this.documentManager = DocumentManager.getInstance();
+        this.dbLogger = DBLogger.getInstance();
     }
 
     @Override
@@ -57,10 +61,12 @@ public class RemoteDocumentChangeSubscriber implements RedisPubSubListener<Strin
                     WriteCommandAction.runWriteCommandAction(editor.getProject(), runnable);
                 }
                 EditorUtil.insertText(editor, documentManager, documentChange.getElement());
+                dbLogger.log(Table.INSERT_REMOTE, documentChange.getElement().getId().toString(), documentManager.getCurrentUserId(), System.currentTimeMillis());
                 break;
             case DELETE:
                 documentManager.markElementAsDeleted(documentChange.getElement());
                 EditorUtil.deleteText(editor, documentManager, documentChange.getElement());
+                dbLogger.log(Table.DELETE_REMOTE, documentChange.getElement().getId().toString(), documentManager.getCurrentUserId(), System.currentTimeMillis());
                 break;
         }
 

@@ -2,11 +2,12 @@ package com.github.cherrydevbomb.collabo.editor;
 
 import com.github.cherrydevbomb.collabo.communication.config.RedisConfig;
 import com.github.cherrydevbomb.collabo.communication.model.ChangeType;
-import com.github.cherrydevbomb.collabo.communication.model.DeleteAck;
 import com.github.cherrydevbomb.collabo.communication.model.DocumentChange;
 import com.github.cherrydevbomb.collabo.editor.crdt.DocumentManager;
 import com.github.cherrydevbomb.collabo.editor.crdt.Element;
 import com.github.cherrydevbomb.collabo.editor.crdt.ID;
+import com.github.cherrydevbomb.collabo.persistence.DBLogger;
+import com.github.cherrydevbomb.collabo.persistence.Table;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.event.DocumentEvent;
@@ -34,6 +35,7 @@ public class LocalDocumentChangeListener implements DocumentListener {
     private final String documentChangeChannel;
     private final String userId;
     private final AtomicInteger operationCounter;
+    private final DBLogger dbLogger;
 
     public LocalDocumentChangeListener(Editor editor, String documentChangeChannel, String userId, int initialOpCounter) {
         this.editor = editor;
@@ -42,11 +44,14 @@ public class LocalDocumentChangeListener implements DocumentListener {
         this.documentChangeChannel = documentChangeChannel;
         this.userId = userId;
         this.operationCounter = new AtomicInteger(initialOpCounter);
+        this.dbLogger = DBLogger.getInstance();
     }
 
     @Override
     synchronized
     public void documentChanged(@NotNull DocumentEvent event) {
+        long opTimestamp = System.currentTimeMillis();
+
         Computable<Integer> getCaretOffsetLambda = () -> editor.getCaretModel().getPrimaryCaret().getOffset();
         int caretOffset = ApplicationManager.getApplication().runReadAction(getCaretOffsetLambda);
 
@@ -64,9 +69,9 @@ public class LocalDocumentChangeListener implements DocumentListener {
         // if a change contains multiple characters, each character will be treated as a separate DocumentChange
         List<DocumentChange> documentChanges = new ArrayList<>();
         if (event.getOldLength() == 0) {
-            documentChanges = handleInsertEvent(event);
+            documentChanges = handleInsertEvent(event, opTimestamp);
         } else if (event.getNewLength() == 0) {
-            documentChanges = handleDeleteEvent(event);
+            documentChanges = handleDeleteEvent(event, opTimestamp);
         }
 
         changeValue = changeValue.replace("\n", "\\n").replace(" ", "\\s");
@@ -88,7 +93,7 @@ public class LocalDocumentChangeListener implements DocumentListener {
         }
     }
 
-    private List<DocumentChange> handleInsertEvent(DocumentEvent event) {
+    private List<DocumentChange> handleInsertEvent(DocumentEvent event, long opTimestamp) {
         int changeOffset = event.getOffset();
         String changeValue = event.getNewFragment().toString();
 
@@ -103,12 +108,13 @@ public class LocalDocumentChangeListener implements DocumentListener {
         // insert into local copy
         for (Element element : newElements) {
             documentManager.insertElement(element);
+            dbLogger.log(Table.INSERT_LOCAL, element.getId().toString(), userId, opTimestamp);
         }
 
         return buildDocumentChangeEventList(newElements, ChangeType.INSERT, event.getOffset());
     }
 
-    private List<DocumentChange> handleDeleteEvent(DocumentEvent event) {
+    private List<DocumentChange> handleDeleteEvent(DocumentEvent event, long opTimestamp) {
         int changeOffset = event.getOffset();
         String changeValue = event.getOldFragment().toString();
         char[] changeValueCharArray = changeValue.toCharArray();
@@ -123,12 +129,14 @@ public class LocalDocumentChangeListener implements DocumentListener {
         Element deletedElement = documentManager.markElementAsDeleted(deletedCharIndex, String.valueOf(changeValueCharArray[0]));
         if (deletedElement.isDeleted()) {
             deletedElements.add(deletedElement);
+            dbLogger.log(Table.DELETE_LOCAL, deletedElement.getId().toString(), userId, opTimestamp);
         }
         for (int i = 1; i < changeValueCharArray.length; i++) {
             deletedCharIndex = documentManager.findIndexOfNextNotDeletedElement(deletedCharIndex);
             Element nextDeletedElement = documentManager.markElementAsDeleted(deletedCharIndex, String.valueOf(changeValueCharArray[i]));
             if (nextDeletedElement != null && nextDeletedElement.isDeleted()) {
                 deletedElements.add(nextDeletedElement);
+                dbLogger.log(Table.DELETE_LOCAL, deletedElement.getId().toString(), userId, opTimestamp);
             }
         }
 
