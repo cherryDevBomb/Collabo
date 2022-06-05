@@ -22,7 +22,6 @@ public class HostCommunicationService extends CommunicationService {
     private static HostCommunicationService hostCommunicationService;
 
     private RedisPubSubListener<String, String> hostInitStateRequestSubscriber;
-    private RedisPubSubListener<String, String> remoteDocumentChangeSubscriber;
 
     private DocumentManager documentManager;
 
@@ -55,10 +54,9 @@ public class HostCommunicationService extends CommunicationService {
 
         DeleteAckService.getInstance().setDeleteAckChannel(deleteAckChannel);
 
+        // subscribe to INIT_STATE_REQUEST_CHANNEL
         hostInitStateRequestSubscriber = new HostInitStateRequestSubscriber(initStateTransferChannel, virtualFile);
-        redisSubConnection.addListener(hostInitStateRequestSubscriber);
-        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
-        async.subscribe(initStateRequestChannel);
+        subscribe(initStateRequestChannel, hostInitStateRequestSubscriber);
 
         // init CRDT text array
         Document document = ReadAction.compute(() -> FileDocumentManager.getInstance().getDocument(virtualFile));
@@ -69,9 +67,7 @@ public class HostCommunicationService extends CommunicationService {
         Editor editor = ReadAction.compute(() -> FileEditorManager.getInstance(project).getSelectedTextEditor());
         document.addDocumentListener(new LocalDocumentChangeListener(editor, documentChangeChannel, userId, document.getText().length()));
         remoteDocumentChangeSubscriber = new RemoteDocumentChangeSubscriber(editor);
-        redisSubConnection.addListener(remoteDocumentChangeSubscriber);
-        RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
-        asyncSub.subscribe(documentChangeChannel);
+        subscribe(documentChangeChannel, remoteDocumentChangeSubscriber);
 
         // add listener for heartbeat and start broadcasting own heartbeat
         subscribeToHeartbeatChannel();
@@ -83,16 +79,8 @@ public class HostCommunicationService extends CommunicationService {
 
     public void stopSession() {
         String initStateRequestChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.INIT_STATE_REQUEST_CHANNEL);
-        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
-        async.unsubscribe(initStateRequestChannel);
-        redisSubConnection.removeListener(hostInitStateRequestSubscriber);
-
-        hostInitStateRequestSubscriber = null;
-
-        stopHeartbeat();
-        unsubscribeHeartbeat();
-        unsubscribeFromDeleteAckChannel();
-
+        unsubscribe(initStateRequestChannel, hostInitStateRequestSubscriber);
+        unsubscribeAll();
         invalidateSession();
         // TODO send message to peers to notify that session was stopped
     }

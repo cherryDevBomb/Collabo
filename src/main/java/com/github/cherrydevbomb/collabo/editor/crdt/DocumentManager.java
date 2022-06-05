@@ -140,9 +140,8 @@ public class DocumentManager {
     }
 
     public void markElementAsDeleted(Element element) {
-        Element existingElement = findElementById(element.getId());
-        existingElement.setDeleted(true);
-        deleteAckService.sendDeleteAck(existingElement, currentUserId);
+        element.setDeleted(true);
+        deleteAckService.sendDeleteAck(element, currentUserId);
     }
 
     public void garbageCollectElement(ID elementId) {
@@ -265,7 +264,7 @@ public class DocumentManager {
         return offset;
     }
 
-    private Element findElementById(ID id) {
+    public Element findElementById(ID id) {
         return textElements.stream()
                 .filter(elem -> elem.getId().equals(id))
                 .findFirst()

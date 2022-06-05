@@ -17,7 +17,6 @@ public class PeerCommunicationService extends CommunicationService {
     private static PeerCommunicationService peerCommunicationService;
 
     RedisPubSubListener<String, String> peerInitStateTransferSubscriber;
-    RedisPubSubListener<String, String> remoteDocumentChangeSubscriber;
 
     public static PeerCommunicationService getInstance() {
         if (peerCommunicationService == null) {
@@ -44,9 +43,7 @@ public class PeerCommunicationService extends CommunicationService {
         DeleteAckService.getInstance().setDeleteAckChannel(deleteAckChannel);
 
         peerInitStateTransferSubscriber = new PeerInitStateTransferSubscriber(this, project);
-        redisSubConnection.addListener(peerInitStateTransferSubscriber);
-        RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
-        asyncSub.subscribe(initStateTransferChannel);
+        subscribe(initStateTransferChannel, peerInitStateTransferSubscriber);
 
         RedisPubSubAsyncCommands<String, String> asyncPub = redisPubConnection.async();
         long subscriberCount = asyncPub.publish(initStateRequestChannel, "Peer requests to join session " + sessionId).get();
@@ -59,14 +56,11 @@ public class PeerCommunicationService extends CommunicationService {
         // unsubscribe from initial state transfer
         String initStateTransferChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.INIT_STATE_TRANSFER_CHANNEL);
         unsubscribe(initStateTransferChannel, peerInitStateTransferSubscriber);
-        peerInitStateTransferSubscriber = null;
 
         // subscribe to future document changes
         String documentChangeChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DOCUMENT_CHANGE_CHANNEL);
         remoteDocumentChangeSubscriber = new RemoteDocumentChangeSubscriber(editor);
-        redisSubConnection.addListener(remoteDocumentChangeSubscriber);
-        RedisPubSubAsyncCommands<String, String> asyncSub = redisSubConnection.async();
-        asyncSub.subscribe(documentChangeChannel);
+        subscribe(documentChangeChannel, remoteDocumentChangeSubscriber);
     }
 
     public void subscribeToHeartbeat() {
@@ -75,21 +69,8 @@ public class PeerCommunicationService extends CommunicationService {
     }
 
     public void leaveSession() {
-        String documentChangeChannel = ChannelUtil.getChannel(currentSessionId, ChannelType.DOCUMENT_CHANGE_CHANNEL);
-        unsubscribe(documentChangeChannel, remoteDocumentChangeSubscriber);
-        remoteDocumentChangeSubscriber = null;
-
-        stopHeartbeat();
-        unsubscribeHeartbeat();
-        unsubscribeFromDeleteAckChannel();
-
+        unsubscribeAll();
         invalidateSession();
         // TODO maybe close editor with shared file?
-    }
-
-    private void unsubscribe(String channel, RedisPubSubListener<String, String> subscriber) {
-        RedisPubSubAsyncCommands<String, String> async = redisSubConnection.async();
-        async.unsubscribe(channel);
-        redisSubConnection.removeListener(subscriber);
     }
 }
